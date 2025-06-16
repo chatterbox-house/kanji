@@ -240,14 +240,16 @@
         }
 
         .game-container {
-            display: flex;
-            gap: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Always two columns */
+            gap: 15px;
             margin-bottom: 20px;
             min-height: 400px;
+            /* Removed overflow-x: auto; to prevent unwanted horizontal scrolling on mobile */
         }
 
         .column {
-            flex: 1;
+            /* Removed min-width to allow flexible scaling on smaller screens */
             display: flex;
             flex-direction: column;
             gap: 15px;
@@ -405,7 +407,27 @@
             color: var(--gold);
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: relative; /* Added for achievement pop-up */
+            overflow: hidden; /* Added for achievement pop-up */
         }
+
+        /* Specific style for achievement pop-up feedback box */
+        .feedback-box.achievement-notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background: linear-gradient(135deg, var(--gold), var(--primary)); /* More vibrant background */
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            padding: 25px;
+            border: 3px solid white;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            animation: achievementUnlock 0.5s ease-out forwards;
+        }
+
 
         .progress-container {
             margin-top: 20px;
@@ -604,6 +626,106 @@
             z-index: 100;
         }
 
+        /* Achievement system styles */
+        .achievements {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .achievements.active {
+            display: flex;
+        }
+
+        .achievements-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .achievement {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            background: #f5f5f5;
+        }
+
+        .achievement-icon {
+            font-size: 2rem;
+            margin-right: 15px;
+            width: 50px;
+            text-align: center;
+        }
+
+        .achievement-info {
+            flex: 1;
+        }
+
+        .achievement-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .achievement-desc {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .achievement-progress {
+            height: 5px;
+            background: #ddd;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
+
+        .achievement-progress-bar {
+            height: 100%;
+            background: var(--gold);
+            border-radius: 5px;
+            width: 0%;
+        }
+
+        .achievement.unlocked {
+            background: rgba(230, 180, 34, 0.1);
+            border: 1px solid var(--gold);
+        }
+
+        .achievement.unlocked .achievement-icon {
+            color: var(--gold);
+        }
+
+        /* Trophy case in profile */
+        .trophy-case {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .trophy {
+            font-size: 1.5rem;
+            opacity: 0.3;
+            transition: all 0.3s;
+        }
+
+        .trophy.unlocked {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+
         /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -630,12 +752,14 @@
             100% { top: 100%; opacity: 0; transform: rotate(720deg); }
         }
 
-        /* Responsive design */
+        @keyframes achievementUnlock {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Responsive design - Ensure two columns always */
         @media (max-width: 768px) {
-            .game-container {
-                flex-direction: column;
-            }
-            
             .title h1 {
                 font-size: 2rem;
             }
@@ -648,9 +772,18 @@
             .avatar-selector {
                 grid-template-columns: repeat(3, 1fr);
             }
+            /* Ensure game-container remains two columns even on smaller screens */
+            .game-container {
+                grid-template-columns: 1fr 1fr;
+            }
         }
 
         @media (max-width: 480px) {
+            .game-container {
+                gap: 10px;
+                grid-template-columns: 1fr 1fr; /* Explicitly keep two columns */
+            }
+            
             .title h1 {
                 font-size: 1.6rem;
             }
@@ -658,6 +791,7 @@
             .card {
                 font-size: 1.8rem;
                 height: 90px;
+                padding: 15px 5px;
             }
             
             .mode-button {
@@ -678,10 +812,8 @@
 </head>
 <body>
     <div class="container">
-        <!-- Confetti container -->
         <div id="confetti-container"></div>
         
-        <!-- Start Screen -->
         <div id="start-screen" class="screen japanese-border active">
             <div class="title">
                 <h1>NANDOmode KANJI</h1>
@@ -717,6 +849,16 @@
                         <option value="gold">金色</option>
                     </select>
                 </div>
+
+                <div class="form-group">
+                    <label>トロフィー:</label>
+                    <div class="trophy-case">
+                        <div class="trophy" id="bronze-trophy">🥉</div>
+                        <div class="trophy" id="silver-trophy">🥈</div>
+                        <div class="trophy" id="gold-trophy">🥇</div>
+                        <div class="trophy" id="platinum-trophy">🏆</div>
+                    </div>
+                </div>
             </div>
             
             <div class="mode-buttons">
@@ -726,27 +868,24 @@
             </div>
         </div>
         
-        <!-- Game Screen -->
         <div id="game-screen" class="screen japanese-border">
             <div class="game-header">
                 <div>スコア: <span id="score">0</span></div>
                 <div>連続正解: <span id="streak">0</span></div>
                 <div>進捗: <span id="progress">0</span>/50</div>
+                <button id="achievements-btn" class="game-button">実績</button>
             </div>
             
             <div class="game-container">
                 <div id="left-column" class="column">
-                    <!-- Cards will be generated here -->
-                </div>
+                    </div>
                 
                 <div id="right-column" class="column">
-                    <!-- Cards will be generated here -->
-                </div>
+                    </div>
             </div>
             
             <div id="peripheral-info" class="peripheral-info">
-                <!-- Kanji details will appear here -->
-            </div>
+                </div>
             
             <div class="feedback-box">
                 <div id="feedback-text">漢字と読み方をマッチさせましょう!</div>
@@ -763,7 +902,6 @@
             </div>
         </div>
         
-        <!-- Round End Screen -->
         <div id="round-end-screen" class="screen japanese-border">
             <div class="title">
                 <h1>ラウンド完了!</h1>
@@ -774,8 +912,7 @@
             <div class="correct-answers">
                 <h3>正解した漢字:</h3>
                 <ul id="correct-answers-list">
-                    <!-- Answers will be added here -->
-                </ul>
+                    </ul>
             </div>
             
             <div class="actions">
@@ -784,22 +921,33 @@
             </div>
         </div>
         
-        <!-- Leaderboard Screen -->
         <div id="leaderboard-screen" class="screen japanese-border">
             <div class="title">
                 <h1>ランキング</h1>
             </div>
             
             <div id="leaderboard-content">
-                <!-- Leaderboard entries will be added here -->
-            </div>
+                </div>
             
             <div class="actions">
                 <button id="back-to-menu" class="action-button continue">メニューに戻る</button>
             </div>
         </div>
+
+        <div id="achievements" class="achievements">
+            <div class="achievements-container japanese-border">
+                <div class="title">
+                    <h1>達成状況</h1>
+                </div>
+                <div id="achievements-list">
+                    </div>
+                <div class="actions">
+                    <button id="close-achievements" class="action-button continue">閉じる</button>
+                </div>
+            </div>
+        </div>
     </div>
-    
+    <script src="vocab.js"></script>
     <script>
         // Game state
         const gameState = {
@@ -822,7 +970,25 @@
                 avatar: "👹",
                 background: "default"
             },
-            audioContext: null
+            audioContext: null,
+            achievements: {
+                firstBlood: { unlocked: false, progress: 0, target: 1 },
+                kanjiNovice: { unlocked: false, progress: 0, target: 10 },
+                kanjiScholar: { unlocked: false, progress: 0, target: 25 },
+                kanjiMaster: { unlocked: false, progress: 0, target: 50 },
+                perfectRound: { unlocked: false, progress: 0, target: 1 },
+                streak5: { unlocked: false, progress: 0, target: 5 },
+                streak10: { unlocked: false, progress: 0, target: 10 },
+                allEasy: { unlocked: false, progress: 0, target: 1 },
+                allMedium: { unlocked: false, progress: 0, target: 1 },
+                allHard: { unlocked: false, progress: 0, target: 1 }
+            },
+            trophies: {
+                bronze: false,
+                silver: false,
+                gold: false,
+                platinum: false
+            }
         };
 
         // DOM elements
@@ -843,6 +1009,9 @@
             
             // Initialize audio context
             initAudio();
+            
+            // Update trophy display
+            updateTrophyDisplay();
         });
 
         function loadPlayerData() {
@@ -866,10 +1035,32 @@
                 // Apply background
                 applyBackground();
             }
+            
+            // Load achievements
+            const savedAchievements = localStorage.getItem('nandomodeKanjiAchievements');
+            if (savedAchievements) {
+                gameState.achievements = JSON.parse(savedAchievements);
+            }
+            
+            // Load trophies
+            const savedTrophies = localStorage.getItem('nandomodeKanjiTrophies');
+            if (savedTrophies) {
+                gameState.trophies = JSON.parse(savedTrophies);
+                updateTrophyDisplay();
+            }
         }
 
         function savePlayerData() {
             localStorage.setItem('nandomodeKanjiPlayer', JSON.stringify(gameState.player));
+            localStorage.setItem('nandomodeKanjiAchievements', JSON.stringify(gameState.achievements));
+            localStorage.setItem('nandomodeKanjiTrophies', JSON.stringify(gameState.trophies));
+        }
+
+        function updateTrophyDisplay() {
+            document.getElementById('bronze-trophy').classList.toggle('unlocked', gameState.trophies.bronze);
+            document.getElementById('silver-trophy').classList.toggle('unlocked', gameState.trophies.silver);
+            document.getElementById('gold-trophy').classList.toggle('unlocked', gameState.trophies.gold);
+            document.getElementById('platinum-trophy').classList.toggle('unlocked', gameState.trophies.platinum);
         }
 
         function setupEventListeners() {
@@ -928,6 +1119,17 @@
                 gameState.player.background = e.target.value;
                 savePlayerData();
                 applyBackground();
+            });
+            
+            // Achievements button
+            document.getElementById('achievements-btn').addEventListener('click', () => {
+                playSound('select');
+                showAchievements();
+            });
+            
+            document.getElementById('close-achievements').addEventListener('click', () => {
+                playSound('click');
+                document.getElementById('achievements').classList.remove('active');
             });
         }
 
@@ -1043,9 +1245,33 @@
         function initKanjiPool() {
             // Create a pool of 100 kanji for this session
             gameState.gameKanji = [];
-            while (gameState.gameKanji.length < 100) {
-                const randomIndex = Math.floor(Math.random() * window.vocab.length);
-                gameState.gameKanji.push(window.vocab[randomIndex]);
+            
+            // Make sure window.vocab exists and has items
+            if (!window.vocab || window.vocab.length === 0) {
+                console.error('Vocabulary data not loaded!');
+                return;
+            }
+
+            // Create a copy of the vocab array to avoid modifying the original
+            const vocabCopy = [...window.vocab];
+            
+            // Fill the game kanji pool with unique kanji
+            while (gameState.gameKanji.length < 100 && vocabCopy.length > 0) {
+                const randomIndex = Math.floor(Math.random() * vocabCopy.length);
+                const kanjiItem = vocabCopy[randomIndex];
+                
+                // Make sure the item exists and has the required properties
+                if (kanjiItem && kanjiItem.kanji) {
+                    // Check if this kanji is already in our pool
+                    if (!gameState.gameKanji.some(item => item.kanji === kanjiItem.kanji)) {
+                        gameState.gameKanji.push(kanjiItem);
+                    }
+                    // Remove this item from the copy to avoid duplicates
+                    vocabCopy.splice(randomIndex, 1);
+                } else {
+                    // Remove invalid items
+                    vocabCopy.splice(randomIndex, 1);
+                }
             }
         }
 
@@ -1093,7 +1319,7 @@
             while (repeatCount < 2 && inProgressKanji.length > 0) {
                 const randomIndex = Math.floor(Math.random() * inProgressKanji.length);
                 const kanjiChar = inProgressKanji[randomIndex];
-                const kanjiObj = window.vocab.find(v => v.kanji === kanjiChar);
+                const kanjiObj = gameState.gameKanji.find(v => v.kanji === kanjiChar);
                 
                 if (kanjiObj) {
                     roundKanji.push(kanjiObj);
@@ -1226,11 +1452,11 @@
 
         function setupCardEvents() {
             // Left column cards
-            gameState.round.leftCards.forEach(card => {
-                const element = document.getElementById(card.id);
+            document.querySelectorAll('#left-column .card').forEach(element => {
                 element.addEventListener('click', () => {
-                    // If we already have a selection, ignore new clicks
-                    if (gameState.round.selectedLeft || gameState.round.selectedRight) return;
+                    const card = gameState.round.leftCards.find(c => c.id === element.id);
+                    // If we already have a selection or this card is already matched, ignore new clicks
+                    if (gameState.round.selectedLeft || element.style.pointerEvents === 'none') return;
                     
                     // Play audio based on mode
                     if (gameState.mode === 'easy') {
@@ -1252,14 +1478,14 @@
             });
             
             // Right column cards
-            gameState.round.rightCards.forEach(card => {
-                const element = document.getElementById(card.id);
+            document.querySelectorAll('#right-column .card').forEach(element => {
                 element.addEventListener('click', () => {
+                    const card = gameState.round.rightCards.find(c => c.id === element.id);
                     // If we don't have a left selection, ignore
                     if (!gameState.round.selectedLeft) return;
                     
-                    // If we already have a right selection, ignore
-                    if (gameState.round.selectedRight) return;
+                    // If we already have a right selection or this card is already matched, ignore
+                    if (gameState.round.selectedRight || element.style.pointerEvents === 'none') return;
                     
                     // Set as selected
                     gameState.round.selectedRight = card.id;
@@ -1338,12 +1564,35 @@
                 // Update kanji progress
                 updateKanjiProgress(leftCard.kanji);
                 
+                // Check for first blood achievement
+                if (gameState.score === 1 && !gameState.achievements.firstBlood.unlocked) {
+                    gameState.achievements.firstBlood.unlocked = true;
+                    showAchievementUnlocked('初勝利', '最初の正解を獲得しました!', '🩸');
+                }
+                
+                // Check streak achievements
+                if (gameState.streak === 5 && !gameState.achievements.streak5.unlocked) {
+                    gameState.achievements.streak5.unlocked = true;
+                    showAchievementUnlocked('連続正解5回', '5回連続で正解しました!', '🔥');
+                }
+                
+                if (gameState.streak === 10 && !gameState.achievements.streak10.unlocked) {
+                    gameState.achievements.streak10.unlocked = true;
+                    showAchievementUnlocked('連続正解10回', '10回連続で正解しました!', '🔥');
+                }
+                
                 // Check if round is complete
                 gameState.round.matchedPairs++;
                 if (gameState.round.matchedPairs === 5) {
                     // Bonus for perfect round
                     gameState.score += 5;
                     document.getElementById('feedback-text').textContent = "パーフェクト! +5 ボーナスポイント";
+                    
+                    // Check for perfect round achievement
+                    if (!gameState.achievements.perfectRound.unlocked) {
+                        gameState.achievements.perfectRound.unlocked = true;
+                        showAchievementUnlocked('完璧なラウンド', 'すべて正解しました!', '✨');
+                    }
                     
                     setTimeout(endRound, 1000);
                 }
@@ -1354,6 +1603,24 @@
                 rightElement.classList.remove('selected');
                 rightElement.classList.add('incorrect');
                 
+                // Show correct info for a few seconds
+                const correctKanjiInfo = gameState.gameKanji.find(k => k.kanji === leftCard.kanji);
+                if (correctKanjiInfo) {
+                    const tempCard = { // Create a temporary card object to pass to showPeripheralInfo
+                        id: `temp-${correctKanjiInfo.kanji}`,
+                        content: { type: 'kanji', kanji: correctKanjiInfo.kanji, reading: correctKanjiInfo.reading },
+                        kanji: correctKanjiInfo.kanji,
+                        reading: correctKanjiInfo.reading,
+                        meaning: correctKanjiInfo.meaning,
+                        grade: correctKanjiInfo.grade
+                    };
+                    showPeripheralInfo(tempCard);
+                    setTimeout(() => {
+                        document.getElementById('peripheral-info').innerHTML = '';
+                        document.getElementById('peripheral-info').classList.remove('active');
+                    }, 3000); // Display for 3 seconds
+                }
+
                 // Reset after delay
                 setTimeout(() => {
                     leftElement.classList.remove('incorrect');
@@ -1377,9 +1644,11 @@
             gameState.round.selectedLeft = null;
             gameState.round.selectedRight = null;
             
-            // Clear peripheral info
-            document.getElementById('peripheral-info').innerHTML = '';
-            document.getElementById('peripheral-info').classList.remove('active');
+            // Clear peripheral info only if correct match, otherwise it will be cleared by the 3s timeout
+            if (isCorrect) {
+                document.getElementById('peripheral-info').innerHTML = '';
+                document.getElementById('peripheral-info').classList.remove('active');
+            }
             
             // Update UI
             updateGameUI();
@@ -1397,6 +1666,23 @@
             // Check if completed (3 times)
             if (gameState.completedKanji[kanji] >= 3) {
                 gameState.sessionCompleted++;
+                
+                // Check completion achievements
+                if (gameState.sessionCompleted === 10 && !gameState.achievements.kanjiNovice.unlocked) {
+                    gameState.achievements.kanjiNovice.unlocked = true;
+                    showAchievementUnlocked('漢字初心者', '10個の漢字をマスターしました!', '🎓');
+                }
+                
+                if (gameState.sessionCompleted === 25 && !gameState.achievements.kanjiScholar.unlocked) {
+                    gameState.achievements.kanjiScholar.unlocked = true;
+                    showAchievementUnlocked('漢字学者', '25個の漢字をマスターしました!', '🎓');
+                }
+                
+                if (gameState.sessionCompleted === 50 && !gameState.achievements.kanjiMaster.unlocked) {
+                    gameState.achievements.kanjiMaster.unlocked = true;
+                    showAchievementUnlocked('漢字マスター', '50個の漢字をマスターしました!', '🎓');
+                    awardTrophy('gold');
+                }
             }
             
             // Update progress bar
@@ -1455,13 +1741,175 @@
 
         function continueGame() {
             if (gameState.sessionCompleted >= 50) {
-                // Game completed
+                // Game completed - check achievements
+                checkAchievements();
                 showLeaderboard();
             } else {
                 // Start new round
                 startNewRound();
                 showScreen('game');
             }
+        }
+
+        function checkAchievements() {
+            // Check mode completion achievements
+            if (gameState.mode === 'easy' && !gameState.achievements.allEasy.unlocked) {
+                gameState.achievements.allEasy.unlocked = true;
+                showAchievementUnlocked('初級モードクリア', '初級モードを完了しました!', '🥉');
+                awardTrophy('bronze');
+            }
+            
+            if (gameState.mode === 'medium' && !gameState.achievements.allMedium.unlocked) {
+                gameState.achievements.allMedium.unlocked = true;
+                showAchievementUnlocked('中級モードクリア', '中級モードを完了しました!', '🥈');
+                awardTrophy('silver');
+            }
+            
+            if (gameState.mode === 'hard' && !gameState.achievements.allHard.unlocked) {
+                gameState.achievements.allHard.unlocked = true;
+                showAchievementUnlocked('上級モードクリア', '上級モードを完了しました!', '🥇');
+                awardTrophy('platinum');
+            }
+            
+            // Save achievements
+            savePlayerData();
+        }
+
+        function awardTrophy(type) {
+            gameState.trophies[type] = true;
+            updateTrophyDisplay();
+            
+            // Show trophy notification
+            let trophyIcon = '';
+            let trophyName = '';
+            
+            switch(type) {
+                case 'bronze':
+                    trophyIcon = '🥉';
+                    trophyName = 'ブロンズトロフィー';
+                    break;
+                case 'silver':
+                    trophyIcon = '🥈';
+                    trophyName = 'シルバートロフィー';
+                    break;
+                case 'gold':
+                    trophyIcon = '🥇';
+                    trophyName = 'ゴールドトロフィー';
+                    break;
+                case 'platinum':
+                    trophyIcon = '🏆';
+                    trophyName = 'プラチナトロフィー';
+                    break;
+            }
+            
+            showAchievementUnlocked(trophyName, `${trophyName}を獲得しました!`, trophyIcon);
+        }
+
+        function showAchievementUnlocked(title, description, icon) {
+            playSound('win');
+            
+            const notification = document.createElement('div');
+            notification.className = 'feedback-box achievement-notification'; /* Added new class for distinct styling */
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+                    <div style="font-size: 2.5rem;">${icon}</div>
+                    <div>
+                        <div style="font-size: 1.5rem; font-weight: bold;">${title}</div>
+                        <div style="font-size: 1rem;">${description}</div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(notification); /* Append to body for fixed positioning */
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        function showAchievements() {
+            const achievementsList = document.getElementById('achievements-list');
+            achievementsList.innerHTML = '';
+            
+            // Create achievement elements
+            for (const [key, achievement] of Object.entries(gameState.achievements)) {
+                const achievementEl = document.createElement('div');
+                achievementEl.className = `achievement ${achievement.unlocked ? 'unlocked' : ''}`;
+                
+                let icon = '🏆';
+                let title = '';
+                let desc = '';
+                
+                switch(key) {
+                    case 'firstBlood':
+                        icon = '🩸';
+                        title = '初勝利';
+                        desc = '最初の正解を獲得する';
+                        break;
+                    case 'kanjiNovice':
+                        icon = '🎓';
+                        title = '漢字初心者';
+                        desc = '10個の漢字をマスターする';
+                        break;
+                    case 'kanjiScholar':
+                        icon = '🎓';
+                        title = '漢字学者';
+                        desc = '25個の漢字をマスターする';
+                        break;
+                    case 'kanjiMaster':
+                        icon = '🎓';
+                        title = '漢字マスター';
+                        desc = '50個の漢字をマスターする';
+                        break;
+                    case 'perfectRound':
+                        icon = '✨';
+                        title = '完璧なラウンド';
+                        desc = 'ラウンドですべて正解する';
+                        break;
+                    case 'streak5':
+                        icon = '🔥';
+                        title = '連続正解5回';
+                        desc = '5回連続で正解する';
+                        break;
+                    case 'streak10':
+                        icon = '🔥';
+                        title = '連続正解10回';
+                        desc = '10回連続で正解する';
+                        break;
+                    case 'allEasy':
+                        icon = '🥉';
+                        title = '初級モードクリア';
+                        desc = '初級モードを完了する';
+                        break;
+                    case 'allMedium':
+                        icon = '🥈';
+                        title = '中級モードクリア';
+                        desc = '中級モードを完了する';
+                        break;
+                    case 'allHard':
+                        icon = '🥇';
+                        title = '上級モードクリア';
+                        desc = '上級モードを完了する';
+                        break;
+                }
+                
+                achievementEl.innerHTML = `
+                    <div class="achievement-icon">${icon}</div>
+                    <div class="achievement-info">
+                        <div class="achievement-title">${title}</div>
+                        <div class="achievement-desc">${desc}</div>
+                        ${!achievement.unlocked ? `
+                            <div class="achievement-progress">
+                                <div class="achievement-progress-bar" style="width: ${(achievement.progress/achievement.target)*100}%"></div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                achievementsList.appendChild(achievementEl);
+            }
+            
+            document.getElementById('achievements').classList.add('active');
         }
 
         function restartRound() {
@@ -1549,6 +1997,5 @@
             return array;
         }
     </script>
-    <script src="vocab.js"></script>
 </body>
 </html>
