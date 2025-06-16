@@ -801,8 +801,6 @@
     </div>
     
     <script>
-       
-
         // Game state
         const gameState = {
             mode: null,
@@ -1040,14 +1038,6 @@
             
             // Add new theme class
             document.body.classList.add(`${mode}-theme`);
-            
-            // Update UI based on mode
-            const gameContainer = document.querySelector('.game-container');
-            if (mode === 'easy') {
-                gameContainer.style.flexDirection = 'row';
-            } else {
-                gameContainer.style.flexDirection = 'row-reverse';
-            }
         }
 
         function initKanjiPool() {
@@ -1119,12 +1109,12 @@
                 availableKanji.splice(randomIndex, 1);
             }
             
-            // Create cards for left and right columns
+            // Create cards for left and right columns based on mode
             roundKanji.forEach((item, index) => {
-                // Determine card content based on mode
                 let leftContent, rightContent;
                 
                 if (gameState.mode === 'easy') {
+                    // Easy: Kanji (audio) on left → Readings on right
                     leftContent = {
                         type: 'kanji',
                         kanji: item.kanji,
@@ -1136,6 +1126,7 @@
                         reading: item.reading
                     };
                 } else {
+                    // Medium/Hard: Readings on left → Kanji on right
                     leftContent = {
                         type: 'kana',
                         kanji: item.kanji,
@@ -1241,13 +1232,15 @@
                     // If we already have a selection, ignore new clicks
                     if (gameState.round.selectedLeft || gameState.round.selectedRight) return;
                     
-                    // Play Japanese TTS for the reading
+                    // Play audio based on mode
                     if (gameState.mode === 'easy') {
+                        // Easy mode: Play kanji reading when clicked
                         speak(card.reading.hiragana, 'ja-JP');
-                    } else {
-                        // In medium/hard mode, left column is kana
+                    } else if (gameState.mode === 'medium') {
+                        // Medium mode: Play reading when clicked
                         speak(card.content.reading.hiragana, 'ja-JP');
                     }
+                    // Hard mode: No audio
                     
                     // Set as selected
                     gameState.round.selectedLeft = card.id;
@@ -1275,7 +1268,7 @@
                     // Get the selected cards
                     const leftCard = gameState.round.leftCards.find(c => c.id === gameState.round.selectedLeft);
                     
-                    // Check if it's a valid pair (any matching reading is acceptable)
+                    // Check if it's a valid pair
                     const isCorrect = leftCard.kanji === card.kanji;
                     
                     // Process the match
@@ -1555,7 +1548,7 @@
             }
             return array;
         }
-<script src="vocab.js"></script>
     </script>
+    <script src="vocab.js"></script>
 </body>
 </html>
