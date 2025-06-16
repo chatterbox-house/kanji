@@ -1,4 +1,4 @@
-export const vocab = [
+window.vocab = [
   { kanji: "一", reading: { hiragana: "いち", katakana: "イチ" }, grade: 1, meaning: "ひとつ (1️⃣)" },
 { kanji: "一", reading: { hiragana: "いち", katakana: "イチ" }, grade: 1, meaning: "一・いち ➕1" },
 { kanji: "二", reading: { hiragana: "に", katakana: "ニ" }, grade: 1, meaning: "二・に ➕2" },
