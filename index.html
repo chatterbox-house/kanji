@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NANDOmode KANJI - Retro Kanji Learning Game</title>
+    <style>
+        /* Retro pixel styling */
+        :root {
+            --easy-color: #2ecc71;
+            --medium-color: #3498db;
+            --hard-color: #e74c3c;
+            --bg-dark: #1a1a2e;
+            --bg-darker: #16213e;
+            --accent: #e94560;
+            --gold: #f39c12;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+        }
+        
+        body {
+            background: var(--bg-dark);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 800px;
+            position: relative;
+            padding: 20px;
+        }
+        
+        .pixel-border {
+            border: 4px solid var(--accent);
+            border-image: repeating-linear-gradient(45deg, var(--accent), var(--accent) 10px, var(--bg-darker) 10px, var(--bg-darker) 20px) 10;
+            position: relative;
+            background: var(--bg-darker);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+        
+        .screen {
+            padding: 20px;
+            display: none;
+        }
+        
+        .screen.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .title {
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px var(--accent);
+            position: relative;
+        }
+        
+        .title h1 {
+            font-size: 2.5rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #f8f9fa;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .title h1::after {
+            content: "";
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        }
+        
+        .menu {
+            display: grid;
+            gap: 15px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+            color: #a9a9a9;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid var(--bg-darker);
+            color: #fff;
+            font-size: 1rem;
+        }
+        
+        .avatar-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .avatar-option {
+            font-size: 2rem;
+            cursor: pointer;
+            padding: 8px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .avatar-option.selected {
+            border: 2px solid var(--accent);
+            background: rgba(233, 69, 96, 0.2);
+            transform: scale(1.1);
+        }
+        
+        .mode-buttons {
+            display: grid;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .mode-button {
+            padding: 15px;
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .mode-button:hover {
+            transform: translateY(-5px);
+        }
+        
+        .mode-button.easy {
+            background: rgba(46, 204, 113, 0.2);
+            border-color: var(--easy-color);
+            color: var(--easy-color);
+        }
+        
+        .mode-button.medium {
+            background: rgba(52, 152, 219, 0.2);
+            border-color: var(--medium-color);
+            color: var(--medium-color);
+        }
+        
+        .mode-button.hard {
+            background: rgba(231, 76, 60, 0.2);
+            border-color: var(--hard-color);
+            color: var(--hard-color);
+        }
+        
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--bg-darker);
+            flex-wrap: wrap;
+        }
+        
+        .game-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .card {
+            padding: 25px 10px;
+            text-align: center;
+            font-size: 2.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid var(--bg-darker);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100px;
+        }
+        
+        .card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-3px);
+        }
+        
+        .card.selected {
+            border-color: var(--gold);
+            box-shadow: 0 0 15px rgba(243, 156, 18, 0.5);
+        }
+        
+        .card.correct {
+            background: rgba(46, 204, 113, 0.2);
+            border-color: var(--easy-color);
+            animation: pulse 0.5s ease;
+        }
+        
+        .card.incorrect {
+            background: rgba(231, 76, 60, 0.2);
+            border-color: var(--hard-color);
+            animation: shake 0.5s ease;
+        }
+        
+        .game-footer {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            gap: 10px;
+        }
+        
+        .game-button {
+            padding: 10px 20px;
+            background: rgba(15, 52, 96, 0.7);
+            border: 2px solid var(--bg-darker);
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            flex: 1;
+        }
+        
+        .game-button:hover {
+            background: rgba(233, 69, 96, 0.7);
+            border-color: var(--accent);
+        }
+        
+        .feedback-box {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--bg-darker);
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: var(--gold);
+        }
+        
+        .progress-container {
+            margin-top: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            height: 20px;
+            border: 2px solid var(--bg-darker);
+            position: relative;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--gold));
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        
+        .progress-text {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+        
+        .round-score {
+            text-align: center;
+            font-size: 2rem;
+            margin: 20px 0;
+            color: var(--gold);
+        }
+        
+        .correct-answers {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            margin: 20px 0;
+            border: 2px solid var(--bg-darker);
+        }
+        
+        .correct-answers h3 {
+            margin-bottom: 15px;
+            color: var(--easy-color);
+        }
+        
+        .correct-answers ul {
+            list-style-type: none;
+        }
+        
+        .correct-answers li {
+            padding: 8px;
+            border-bottom: 1px solid var(--bg-darker);
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        
+        .action-button {
+            padding: 12px 25px;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            border: 3px solid;
+            transition: all 0.3s ease;
+        }
+        
+        .action-button.continue {
+            background: rgba(46, 204, 113, 0.2);
+            border-color: var(--easy-color);
+            color: var(--easy-color);
+        }
+        
+        .action-button.quit {
+            background: rgba(231, 76, 60, 0.2);
+            border-color: var(--hard-color);
+            color: var(--hard-color);
+        }
+        
+        .action-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .leaderboard-entry {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid var(--bg-darker);
+        }
+        
+        .leaderboard-entry:nth-child(1) {
+            font-size: 1.3rem;
+            color: gold;
+        }
+        
+        .leaderboard-entry:nth-child(2) {
+            font-size: 1.2rem;
+            color: silver;
+        }
+        
+        .leaderboard-entry:nth-child(3) {
+            font-size: 1.1rem;
+            color: #cd7f32;
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            20% { transform: translateX(-10px); }
+            40% { transform: translateX(10px); }
+            60% { transform: translateX(-10px); }
+            80% { transform: translateX(10px); }
+            100% { transform: translateX(0); }
+        }
+        
+        @keyframes dissolve {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0.8); }
+        }
+        
+        /* Confetti effect */
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: var(--gold);
+            top: 0;
+            opacity: 0;
+        }
+        
+        .confetti:nth-child(1) {
+            left: 10%;
+            background: var(--accent);
+            animation: confetti 3s ease 1;
+        }
+        
+        .confetti:nth-child(2) {
+            left: 20%;
+            background: var(--easy-color);
+            animation: confetti 3s ease 1.5s 1;
+        }
+        
+        .confetti:nth-child(3) {
+            left: 30%;
+            background: var(--medium-color);
+            animation: confetti 3s ease 2s 1;
+        }
+        
+        .confetti:nth-child(4) {
+            left: 40%;
+            background: var(--gold);
+            animation: confetti 3s ease 0.5s 1;
+        }
+        
+        .confetti:nth-child(5) {
+            left: 50%;
+            background: #9b59b6;
+            animation: confetti 3s ease 1.2s 1;
+        }
+        
+        .confetti:nth-child(6) {
+            left: 60%;
+            background: #1abc9c;
+            animation: confetti 3s ease 2.5s 1;
+        }
+        
+        .confetti:nth-child(7) {
+            left: 70%;
+            background: var(--hard-color);
+            animation: confetti 3s ease 0.8s 1;
+        }
+        
+        .confetti:nth-child(8) {
+            left: 80%;
+            background: var(--easy-color);
+            animation: confetti 3s ease 1.7s 1;
+        }
+        
+        .confetti:nth-child(9) {
+            left: 90%;
+            background: var(--medium-color);
+            animation: confetti 3s ease 2.3s 1;
+        }
+        
+        @keyframes confetti {
+            0% { top: -10px; opacity: 1; transform: rotate(0deg); }
+            100% { top: 100%; opacity: 0; transform: rotate(720deg); }
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .game-container {
+                flex-direction: column;
+            }
+            
+            .title h1 {
+                font-size: 2rem;
+            }
+            
+            .card {
+                font-size: 2rem;
+                height: 80px;
+            }
+            
+            .game-header {
+                flex-direction: column;
+                gap: 10px;
+                align-items: center;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .title h1 {
+                font-size: 1.6rem;
+            }
+            
+            .card {
+                font-size: 1.8rem;
+                height: 70px;
+            }
+            
+            .mode-button {
+                font-size: 1.1rem;
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Confetti container -->
+        <div id="confetti-container"></div>
+        
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen pixel-border active">
+            <div class="title">
+                <h1>NANDOmode KANJI</h1>
+                <p>Retro Japanese Kanji Learning Game</p>
+            </div>
+            
+            <div class="menu">
+                <div class="form-group">
+                    <label for="nickname">Nickname:</label>
+                    <input type="text" id="nickname" placeholder="Enter your name" value="Player">
+                </div>
+                
+                <div class="form-group">
+                    <label>Avatar:</label>
+                    <div class="avatar-selector">
+                        <div class="avatar-option selected">👨‍🎓</div>
+                        <div class="avatar-option">👩‍🏫</div>
+                        <div class="avatar-option">👨‍🏫</div>
+                        <div class="avatar-option">👩‍🎓</div>
+                        <div class="avatar-option">😎</div>
+                        <div class="avatar-option">🥷</div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="background">Background:</label>
+                    <select id="background">
+                        <option value="default">Default (Blue)</option>
+                        <option value="red">Red</option>
+                        <option value="green">Green</option>
+                        <option value="purple">Purple</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mode-buttons">
+                <div class="mode-button easy" data-mode="easy">Easy Mode</div>
+                <div class="mode-button medium" data-mode="medium">Medium Mode</div>
+                <div class="mode-button hard" data-mode="hard">Hard Mode</div>
+            </div>
+        </div>
+        
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen pixel-border">
+            <div class="game-header">
+                <div>Score: <span id="score">0</span></div>
+                <div>Streak: <span id="streak">0</span></div>
+                <div>Progress: <span id="progress">0</span>/50</div>
+            </div>
+            
+            <div class="game-container">
+                <div id="left-column" class="column">
+                    <!-- Cards will be generated here -->
+                </div>
+                <div id="right-column" class="column">
+                    <!-- Cards will be generated here -->
+                </div>
+            </div>
+            
+            <div class="feedback-box">
+                <div id="feedback-text">Match kanji to their readings!</div>
+            </div>
+            
+            <div class="progress-container">
+                <div id="progress-bar" class="progress-bar"></div>
+                <div class="progress-text">Kanji Mastery</div>
+            </div>
+            
+            <div class="game-footer">
+                <button id="refresh-btn" class="game-button">Restart Round</button>
+                <button id="quit-btn" class="game-button">Quit Game</button>
+            </div>
+        </div>
+        
+        <!-- Round End Screen -->
+        <div id="round-end-screen" class="screen pixel-border">
+            <div class="title">
+                <h1>Round Complete!</h1>
+            </div>
+            
+            <div class="round-score">Score: <span id="round-score">0</span></div>
+            
+            <div class="correct-answers">
+                <h3>Correct Answers:</h3>
+                <ul id="correct-answers-list">
+                    <!-- Answers will be added here -->
+                </ul>
+            </div>
+            
+            <div class="actions">
+                <button id="continue-btn" class="action-button continue">Continue</button>
+                <button id="quit-round-btn" class="action-button quit">Quit</button>
+            </div>
+        </div>
+        
+        <!-- Leaderboard Screen -->
+        <div id="leaderboard-screen" class="screen pixel-border">
+            <div class="title">
+                <h1>Leaderboard</h1>
+            </div>
+            
+            <div id="leaderboard-content">
+                <!-- Leaderboard entries will be added here -->
+            </div>
+            
+            <div class="actions">
+                <button id="back-to-menu" class="action-button continue">Back to Menu</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Vocabulary data - normally this would be in an external vocab.js file
+        window.vocab = [
+            { kanji: "日", readingHiragana: "ひ", readingKatakana: "ヒ" },
+            { kanji: "月", readingHiragana: "つき", readingKatakana: "ツキ" },
+            { kanji: "火", readingHiragana: "ひ", readingKatakana: "ヒ" },
+            { kanji: "水", readingHiragana: "みず", readingKatakana: "ミズ" },
+            { kanji: "木", readingHiragana: "き", readingKatakana: "キ" },
+            { kanji: "金", readingHiragana: "かね", readingKatakana: "カネ" },
+            { kanji: "土", readingHiragana: "つち", readingKatakana: "ツチ" },
+            { kanji: "山", readingHiragana: "やま", readingKatakana: "ヤマ" },
+            { kanji: "川", readingHiragana: "かわ", readingKatakana: "カワ" },
+            { kanji: "人", readingHiragana: "ひと", readingKatakana: "ヒト" },
+            { kanji: "口", readingHiragana: "くち", readingKatakana: "クチ" },
+            { kanji: "手", readingHiragana: "て", readingKatakana: "テ" },
+            { kanji: "目", readingHiragana: "め", readingKatakana: "メ" },
+            { kanji: "耳", readingHiragana: "みみ", readingKatakana: "ミミ" },
+            { kanji: "足", readingHiragana: "あし", readingKatakana: "アシ" },
+            { kanji: "雨", readingHiragana: "あめ", readingKatakana: "アメ" },
+            { kanji: "花", readingHiragana: "はな", readingKatakana: "ハナ" },
+            { kanji: "魚", readingHiragana: "さかな", readingKatakana: "サカナ" },
+            { kanji: "鳥", readingHiragana: "とり", readingKatakana: "トリ" },
+            { kanji: "空", readingHiragana: "そら", readingKatakana: "ソラ" }
+        ];
+        
+        // Game state
+        const gameState = {
+            mode: null,
+            score: 0,
+            streak: 0,
+            completedKanji: {},
+            round: {
+                leftCards: [],
+                rightCards: [],
+                correctPairs: {},
+                selectedLeft: null,
+                selectedRight: null,
+                matchedPairs: 0
+            },
+            gameKanji: [],
+            sessionCompleted: 0,
+            player: {
+                name: "Player",
+                avatar: "👨‍🎓",
+                background: "default"
+            }
+        };
+        
+        // DOM elements
+        const screens = {
+            start: document.getElementById('start-screen'),
+            game: document.getElementById('game-screen'),
+            roundEnd: document.getElementById('round-end-screen'),
+            leaderboard: document.getElementById('leaderboard-screen')
+        };
+        
+        // Initialize the game
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load player data from localStorage if available
+            loadPlayerData();
+            
+            // Set up event listeners
+            setupEventListeners();
+        });
+        
+        function loadPlayerData() {
+            const savedData = localStorage.getItem('nandomodeKanjiPlayer');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                document.getElementById('nickname').value = data.name || "Player";
+                document.getElementById('background').value = data.background || "default";
+                
+                // Set avatar
+                const avatars = document.querySelectorAll('.avatar-option');
+                avatars.forEach(avatar => {
+                    avatar.classList.remove('selected');
+                    if (avatar.textContent === data.avatar) {
+                        avatar.classList.add('selected');
+                    }
+                });
+                
+                // Apply background
+                applyBackground();
+            }
+        }
+        
+        function savePlayerData() {
+            localStorage.setItem('nandomodeKanjiPlayer', JSON.stringify(gameState.player));
+        }
+        
+        function setupEventListeners() {
+            // Avatar selection
+            document.querySelectorAll('.avatar-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    document.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
+                    option.classList.add('selected');
+                    gameState.player.avatar = option.textContent;
+                });
+            });
+            
+            // Mode selection
+            document.querySelectorAll('.mode-button').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const mode = e.target.dataset.mode;
+                    startGame(mode);
+                });
+            });
+            
+            // Game buttons
+            document.getElementById('refresh-btn').addEventListener('click', restartRound);
+            document.getElementById('quit-btn').addEventListener('click', quitGame);
+            
+            // Round end buttons
+            document.getElementById('continue-btn').addEventListener('click', continueGame);
+            document.getElementById('quit-round-btn').addEventListener('click', quitGame);
+            
+            // Leaderboard button
+            document.getElementById('back-to-menu').addEventListener('click', () => {
+                showScreen('start');
+            });
+            
+            // Player info changes
+            document.getElementById('nickname').addEventListener('change', (e) => {
+                gameState.player.name = e.target.value || "Player";
+                savePlayerData();
+            });
+            
+            document.getElementById('background').addEventListener('change', (e) => {
+                gameState.player.background = e.target.value;
+                savePlayerData();
+                applyBackground();
+            });
+        }
+        
+        function applyBackground() {
+            const backgrounds = {
+                default: ['#1a1a2e', '#16213e'],
+                red: ['#2d0000', '#4d0000'],
+                green: ['#002d00', '#004d00'],
+                purple: ['#1a002e', '#16003e']
+            };
+            
+            const colors = backgrounds[gameState.player.background] || backgrounds.default;
+            document.body.style.background = `radial-gradient(circle, ${colors[0]}, ${colors[1]})`;
+        }
+        
+        function playSound(type) {
+            // In a real implementation, we'd use the Web Audio API
+            // For this demo, we'll use simple console logging
+            console.log(`Playing sound: ${type}`);
+        }
+        
+        function startGame(mode) {
+            // Set game mode
+            gameState.mode = mode;
+            
+            // Apply theme color
+            applyThemeColor(mode);
+            
+            // Reset game state
+            gameState.score = 0;
+            gameState.streak = 0;
+            gameState.sessionCompleted = 0;
+            gameState.completedKanji = {};
+            gameState.player.name = document.getElementById('nickname').value || "Player";
+            
+            // Save player data
+            savePlayerData();
+            
+            // Initialize kanji pool
+            initKanjiPool();
+            
+            // Start first round
+            startNewRound();
+            
+            // Show game screen
+            showScreen('game');
+            
+            // Update UI
+            updateGameUI();
+        }
+        
+        function applyThemeColor(mode) {
+            // Remove previous theme classes
+            document.body.classList.remove('easy-theme', 'medium-theme', 'hard-theme');
+            
+            // Add new theme class
+            document.body.classList.add(`${mode}-theme`);
+            
+            // Update UI based on mode
+            const gameContainer = document.querySelector('.game-container');
+            if (mode === 'easy') {
+                gameContainer.style.flexDirection = 'row';
+            } else {
+                gameContainer.style.flexDirection = 'row-reverse';
+            }
+        }
+        
+        function initKanjiPool() {
+            // Create a pool of 100 kanji for this session
+            gameState.gameKanji = [];
+            while (gameState.gameKanji.length < 100) {
+                const randomIndex = Math.floor(Math.random() * window.vocab.length);
+                gameState.gameKanji.push(window.vocab[randomIndex]);
+            }
+        }
+        
+        function startNewRound() {
+            // Reset round state
+            gameState.round = {
+                leftCards: [],
+                rightCards: [],
+                correctPairs: {},
+                selectedLeft: null,
+                selectedRight: null,
+                matchedPairs: 0
+            };
+            
+            // Clear columns
+            document.getElementById('left-column').innerHTML = '';
+            document.getElementById('right-column').innerHTML = '';
+            
+            // Select 5 kanji: 3 new, 2 repeat
+            const roundKanji = [];
+            const availableKanji = [...gameState.gameKanji];
+            
+            // Add 3 new kanji (not completed)
+            let newCount = 0;
+            while (newCount < 3 && availableKanji.length > 0) {
+                const randomIndex = Math.floor(Math.random() * availableKanji.length);
+                const kanji = availableKanji[randomIndex];
+                
+                if (!gameState.completedKanji[kanji.kanji] || gameState.completedKanji[kanji.kanji] < 3) {
+                    roundKanji.push(kanji);
+                    availableKanji.splice(randomIndex, 1);
+                    newCount++;
+                }
+            }
+            
+            // Add 2 repeat kanji (in progress)
+            let repeatCount = 0;
+            const inProgressKanji = Object.keys(gameState.completedKanji).filter(
+                k => gameState.completedKanji[k] > 0 && gameState.completedKanji[k] < 3
+            );
+            
+            while (repeatCount < 2 && inProgressKanji.length > 0) {
+                const randomIndex = Math.floor(Math.random() * inProgressKanji.length);
+                const kanjiChar = inProgressKanji[randomIndex];
+                const kanjiObj = window.vocab.find(v => v.kanji === kanjiChar);
+                
+                if (kanjiObj) {
+                    roundKanji.push(kanjiObj);
+                    inProgressKanji.splice(randomIndex, 1);
+                    repeatCount++;
+                }
+            }
+            
+            // If we still need more, add random
+            while (roundKanji.length < 5 && availableKanji.length > 0) {
+                const randomIndex = Math.floor(Math.random() * availableKanji.length);
+                roundKanji.push(availableKanji[randomIndex]);
+                availableKanji.splice(randomIndex, 1);
+            }
+            
+            // Create cards for left and right columns
+            roundKanji.forEach((item, index) => {
+                // Determine card content based on mode
+                let leftContent, rightContent;
+                
+                if (gameState.mode === 'easy') {
+                    leftContent = item.kanji;
+                    rightContent = item.readingHiragana;
+                } else {
+                    leftContent = item.readingHiragana;
+                    rightContent = item.kanji;
+                }
+                
+                // Create card objects
+                const leftCard = {
+                    id: `left-${index}`,
+                    content: leftContent,
+                    kanji: item.kanji,
+                    reading: item.readingHiragana,
+                    type: gameState.mode === 'easy' ? 'kanji' : 'kana'
+                };
+                
+                const rightCard = {
+                    id: `right-${index}`,
+                    content: rightContent,
+                    kanji: item.kanji,
+                    reading: item.readingHiragana,
+                    type: gameState.mode === 'easy' ? 'kana' : 'kanji'
+                };
+                
+                gameState.round.leftCards.push(leftCard);
+                gameState.round.rightCards.push(rightCard);
+                
+                // Store correct pairs
+                gameState.round.correctPairs[leftCard.id] = rightCard.id;
+            });
+            
+            // Shuffle right column
+            shuffleArray(gameState.round.rightCards);
+            
+            // Render cards
+            renderCards();
+            
+            // Set up card click events
+            setupCardEvents();
+            
+            // Update feedback
+            document.getElementById('feedback-text').textContent = "Match the pairs!";
+        }
+        
+        function renderCards() {
+            const leftColumn = document.getElementById('left-column');
+            const rightColumn = document.getElementById('right-column');
+            
+            // Render left column cards
+            gameState.round.leftCards.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.id = card.id;
+                cardElement.className = 'card';
+                cardElement.textContent = card.content;
+                leftColumn.appendChild(cardElement);
+            });
+            
+            // Render right column cards
+            gameState.round.rightCards.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.id = card.id;
+                cardElement.className = 'card';
+                cardElement.textContent = card.content;
+                rightColumn.appendChild(cardElement);
+            });
+        }
+        
+        function setupCardEvents() {
+            // Left column cards
+            gameState.round.leftCards.forEach(card => {
+                const element = document.getElementById(card.id);
+                element.addEventListener('click', () => {
+                    if (gameState.mode === 'easy') {
+                        // Play Japanese TTS for kanji reading
+                        speak(card.reading, 'ja-JP');
+                    } else if (gameState.mode === 'medium') {
+                        // Play Japanese TTS for kana
+                        speak(card.content, 'ja-JP');
+                    }
+                    handleCardClick(card.id, 'left');
+                });
+            });
+            
+            // Right column cards
+            gameState.round.rightCards.forEach(card => {
+                const element = document.getElementById(card.id);
+                element.addEventListener('click', () => {
+                    handleCardClick(card.id, 'right');
+                });
+            });
+        }
+        
+        function speak(text, lang) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = lang;
+                speechSynthesis.speak(utterance);
+            } else {
+                // Fallback to sound effect
+                playSound('click');
+            }
+        }
+        
+        function handleCardClick(cardId, column) {
+            // If we already have a pair selected, ignore new selections
+            if (gameState.round.selectedLeft && gameState.round.selectedRight) {
+                return;
+            }
+            
+            // Select the card
+            const cardElement = document.getElementById(cardId);
+            cardElement.classList.add('selected');
+            
+            if (column === 'left') {
+                gameState.round.selectedLeft = cardId;
+            } else {
+                gameState.round.selectedRight = cardId;
+            }
+            
+            // If we have both selected, check for match
+            if (gameState.round.selectedLeft && gameState.round.selectedRight) {
+                setTimeout(checkMatch, 500);
+            }
+        }
+        
+        function checkMatch() {
+            const leftCardId = gameState.round.selectedLeft;
+            const rightCardId = gameState.round.selectedRight;
+            
+            const leftCard = gameState.round.leftCards.find(card => card.id === leftCardId);
+            const rightCard = gameState.round.rightCards.find(card => card.id === rightCardId);
+            
+            // Check if this is a correct pair
+            const isCorrect = gameState.round.correctPairs[leftCardId] === rightCardId;
+            
+            // Get DOM elements
+            const leftElement = document.getElementById(leftCardId);
+            const rightElement = document.getElementById(rightCardId);
+            
+            if (isCorrect) {
+                // Correct match
+                leftElement.classList.remove('selected');
+                leftElement.classList.add('correct');
+                rightElement.classList.remove('selected');
+                rightElement.classList.add('correct');
+                
+                // Disable further clicks
+                leftElement.style.pointerEvents = 'none';
+                rightElement.style.pointerEvents = 'none';
+                
+                // Update score and streak
+                gameState.score += 1;
+                gameState.streak += 1;
+                
+                // Play sound
+                playSound('correct');
+                
+                // Update feedback
+                document.getElementById('feedback-text').textContent = "Correct! +1 point";
+                
+                // Update kanji progress
+                updateKanjiProgress(leftCard.kanji);
+                
+                // Check if round is complete
+                gameState.round.matchedPairs++;
+                if (gameState.round.matchedPairs === 5) {
+                    // Bonus for perfect round
+                    gameState.score += 5;
+                    document.getElementById('feedback-text').textContent = "Perfect Round! +5 bonus points";
+                    
+                    setTimeout(endRound, 1000);
+                }
+            } else {
+                // Incorrect match
+                leftElement.classList.remove('selected');
+                leftElement.classList.add('incorrect');
+                rightElement.classList.remove('selected');
+                rightElement.classList.add('incorrect');
+                
+                // Reset after delay
+                setTimeout(() => {
+                    leftElement.classList.remove('incorrect');
+                    rightElement.classList.remove('incorrect');
+                }, 1000);
+                
+                // Reset selection
+                gameState.round.selectedLeft = null;
+                gameState.round.selectedRight = null;
+                
+                // Reset streak
+                gameState.streak = 0;
+                
+                // Play sound
+                playSound('incorrect');
+                
+                // Update feedback
+                document.getElementById('feedback-text').textContent = "Incorrect! -1 point";
+                
+                // Update score
+                gameState.score = Math.max(0, gameState.score - 1);
+            }
+            
+            // Update UI
+            updateGameUI();
+        }
+        
+        function updateKanjiProgress(kanji) {
+            // Initialize if needed
+            if (!gameState.completedKanji[kanji]) {
+                gameState.completedKanji[kanji] = 0;
+            }
+            
+            // Increment count
+            gameState.completedKanji[kanji]++;
+            
+            // Check if completed (3 times)
+            if (gameState.completedKanji[kanji] >= 3) {
+                gameState.sessionCompleted++;
+            }
+            
+            // Update progress bar
+            const progressPercent = (gameState.sessionCompleted / 50) * 100;
+            document.getElementById('progress-bar').style.width = `${progressPercent}%`;
+        }
+        
+        function endRound() {
+            // Play win sound
+            playSound('win');
+            
+            // Show confetti
+            createConfetti();
+            
+            // Update round end screen
+            document.getElementById('round-score').textContent = gameState.score;
+            
+            // Populate correct answers
+            const answersList = document.getElementById('correct-answers-list');
+            answersList.innerHTML = '';
+            
+            gameState.round.leftCards.forEach(leftCard => {
+                const li = document.createElement('li');
+                const rightCardId = gameState.round.correctPairs[leftCard.id];
+                const rightCard = gameState.round.rightCards.find(card => card.id === rightCardId);
+                
+                li.innerHTML = `<span>${leftCard.content}</span> → <span>${rightCard.content}</span>`;
+                answersList.appendChild(li);
+            });
+            
+            // Show round end screen
+            showScreen('roundEnd');
+        }
+        
+        function createConfetti() {
+            const confettiContainer = document.getElementById('confetti-container');
+            confettiContainer.innerHTML = '';
+            
+            for (let i = 0; i < 20; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = `${Math.random() * 100}%`;
+                confetti.style.animationDelay = `${Math.random() * 2}s`;
+                confettiContainer.appendChild(confetti);
+            }
+        }
+        
+        function continueGame() {
+            if (gameState.sessionCompleted >= 50) {
+                // Game completed
+                showLeaderboard();
+            } else {
+                // Start new round
+                startNewRound();
+                showScreen('game');
+            }
+        }
+        
+        function restartRound() {
+            startNewRound();
+            updateGameUI();
+        }
+        
+        function quitGame() {
+            showScreen('start');
+        }
+        
+        function showLeaderboard() {
+            // Get existing leaderboard or create empty
+            let leaderboard = JSON.parse(localStorage.getItem('nandomodeKanjiLeaderboard')) || [];
+            
+            // Add current player
+            leaderboard.push({
+                name: gameState.player.name,
+                avatar: gameState.player.avatar,
+                score: gameState.score,
+                mode: gameState.mode,
+                date: new Date().toISOString()
+            });
+            
+            // Sort by score descending
+            leaderboard.sort((a, b) => b.score - a.score);
+            
+            // Keep top 10
+            leaderboard = leaderboard.slice(0, 10);
+            
+            // Save back to localStorage
+            localStorage.setItem('nandomodeKanjiLeaderboard', JSON.stringify(leaderboard));
+            
+            // Render leaderboard
+            const leaderboardContent = document.getElementById('leaderboard-content');
+            leaderboardContent.innerHTML = '';
+            
+            leaderboard.forEach((entry, index) => {
+                const entryEl = document.createElement('div');
+                entryEl.className = 'leaderboard-entry';
+                entryEl.innerHTML = `
+                    <span>${entry.avatar} ${entry.name}</span>
+                    <span>${entry.score} points (${entry.mode})</span>
+                `;
+                leaderboardContent.appendChild(entryEl);
+            });
+            
+            showScreen('leaderboard');
+        }
+        
+        function updateGameUI() {
+            document.getElementById('score').textContent = gameState.score;
+            document.getElementById('streak').textContent = gameState.streak;
+            document.getElementById('progress').textContent = gameState.sessionCompleted;
+        }
+        
+        function showScreen(screenName) {
+            // Hide all screens
+            Object.values(screens).forEach(screen => {
+                screen.classList.remove('active');
+            });
+            
+            // Show requested screen
+            screens[screenName].classList.add('active');
+        }
+        
+        // Utility functions
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+    </script>
+</body>
+</html>
