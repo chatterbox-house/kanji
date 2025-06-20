@@ -251,11 +251,9 @@
             gap: 15px;
             margin-bottom: 20px;
             min-height: 400px;
-            /* Removed overflow-x: auto; to prevent unwanted horizontal scrolling on mobile */
         }
 
         .column {
-            /* Removed min-width to allow flexible scaling on smaller screens */
             display: flex;
             flex-direction: column;
             gap: 15px;
@@ -413,18 +411,17 @@
             color: var(--gold);
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            position: relative; /* Added for achievement pop-up */
-            overflow: hidden; /* Added for achievement pop-up */
+            position: relative;
+            overflow: hidden;
         }
 
-        /* Specific style for achievement pop-up feedback box */
         .feedback-box.achievement-notification {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             z-index: 1000;
-            background: linear-gradient(135deg, var(--gold), var(--primary)); /* More vibrant background */
+            background: linear-gradient(135deg, var(--gold), var(--primary));
             color: white;
             font-weight: bold;
             text-align: center;
@@ -433,7 +430,6 @@
             box-shadow: 0 0 30px rgba(0,0,0,0.5);
             animation: achievementUnlock 0.5s ease-out forwards;
         }
-
 
         .progress-container {
             margin-top: 20px;
@@ -778,7 +774,6 @@
             .avatar-selector {
                 grid-template-columns: repeat(3, 1fr);
             }
-            /* Ensure game-container remains two columns even on smaller screens */
             .game-container {
                 grid-template-columns: 1fr 1fr;
             }
@@ -787,7 +782,7 @@
         @media (max-width: 480px) {
             .game-container {
                 gap: 10px;
-                grid-template-columns: 1fr 1fr; /* Explicitly keep two columns */
+                grid-template-columns: 1fr 1fr;
             }
             
             .title h1 {
@@ -955,20 +950,7 @@
     </div>
     <script src="vocab.js"></script>
     <script>
-        // Register the Service Worker
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('service-worker.js')
-                    .then(registration => {
-                        console.log('Service Worker registered! Scope:', registration.scope);
-                    })
-                    .catch(err => {
-                        console.log('Service Worker registration failed:', err);
-                    });
-            });
-        }
-
-        // Game state
+        // Game state with improved data structure
         const gameState = {
             mode: null,
             score: 0,
@@ -987,7 +969,10 @@
             player: {
                 name: "プレイヤー",
                 avatar: "👹",
-                background: "default"
+                background: "default",
+                lastPlayed: null,
+                totalScore: 0,
+                kanjiMastered: 0
             },
             audioContext: null,
             achievements: {
@@ -1020,7 +1005,7 @@
 
         // Initialize the game
         document.addEventListener('DOMContentLoaded', () => {
-            // Load player data from localStorage if available
+            // Load all player data
             loadPlayerData();
             
             // Set up event listeners
@@ -1033,46 +1018,109 @@
             updateTrophyDisplay();
         });
 
+        // Improved data loading with fallbacks
         function loadPlayerData() {
-            const savedData = localStorage.getItem('nandomodeKanjiPlayer');
-            if (savedData) {
-                const data = JSON.parse(savedData);
-                document.getElementById('nickname').value = data.name || "プレイヤー";
-                document.getElementById('background').value = data.background || "default";
+            try {
+                const savedData = localStorage.getItem('nandomodeKanjiPlayer');
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    
+                    // Update player data
+                    gameState.player = {
+                        ...gameState.player,
+                        ...data,
+                        // Ensure required fields exist
+                        name: data.name || "プレイヤー",
+                        avatar: data.avatar || "👹",
+                        background: data.background || "default"
+                    };
+                    
+                    // Update UI elements
+                    document.getElementById('nickname').value = gameState.player.name;
+                    document.getElementById('background').value = gameState.player.background;
+                    
+                    // Set avatar
+                    const avatars = document.querySelectorAll('.avatar-option');
+                    avatars.forEach(avatar => {
+                        avatar.classList.remove('selected');
+                        if (avatar.textContent === gameState.player.avatar) {
+                            avatar.classList.add('selected');
+                        }
+                    });
+                    
+                    // Apply background
+                    applyBackground();
+                }
                 
-                // Set avatar
-                const avatars = document.querySelectorAll('.avatar-option');
-                avatars.forEach(avatar => {
-                    avatar.classList.remove('selected');
-                    if (avatar.textContent === data.avatar) {
-                        avatar.classList.add('selected');
-                    }
-                });
+                // Load achievements with fallback
+                const savedAchievements = localStorage.getItem('nandomodeKanjiAchievements');
+                if (savedAchievements) {
+                    const achievements = JSON.parse(savedAchievements);
+                    // Merge with default achievements to ensure all exist
+                    gameState.achievements = {
+                        ...gameState.achievements,
+                        ...achievements
+                    };
+                }
                 
-                gameState.player.avatar = data.avatar || "👹";
+                // Load trophies with fallback
+                const savedTrophies = localStorage.getItem('nandomodeKanjiTrophies');
+                if (savedTrophies) {
+                    const trophies = JSON.parse(savedTrophies);
+                    gameState.trophies = {
+                        ...gameState.trophies,
+                        ...trophies
+                    };
+                }
                 
-                // Apply background
-                applyBackground();
-            }
-            
-            // Load achievements
-            const savedAchievements = localStorage.getItem('nandomodeKanjiAchievements');
-            if (savedAchievements) {
-                gameState.achievements = JSON.parse(savedAchievements);
-            }
-            
-            // Load trophies
-            const savedTrophies = localStorage.getItem('nandomodeKanjiTrophies');
-            if (savedTrophies) {
-                gameState.trophies = JSON.parse(savedTrophies);
+                // Load completed kanji
+                const savedKanji = localStorage.getItem('nandomodeKanjiProgress');
+                if (savedKanji) {
+                    gameState.completedKanji = JSON.parse(savedKanji);
+                    // Calculate mastered kanji count
+                    gameState.player.kanjiMastered = Object.values(gameState.completedKanji)
+                        .filter(count => count >= 3).length;
+                }
+                
                 updateTrophyDisplay();
+            } catch (e) {
+                console.error('Error loading player data:', e);
+                // Reset to defaults if loading fails
+                resetPlayerData();
             }
         }
 
+        // Save all player data with timestamp
         function savePlayerData() {
-            localStorage.setItem('nandomodeKanjiPlayer', JSON.stringify(gameState.player));
-            localStorage.setItem('nandomodeKanjiAchievements', JSON.stringify(gameState.achievements));
-            localStorage.setItem('nandomodeKanjiTrophies', JSON.stringify(gameState.trophies));
+            try {
+                // Update last played timestamp
+                gameState.player.lastPlayed = new Date().toISOString();
+                
+                // Save player data
+                localStorage.setItem('nandomodeKanjiPlayer', JSON.stringify(gameState.player));
+                
+                // Save achievements
+                localStorage.setItem('nandomodeKanjiAchievements', JSON.stringify(gameState.achievements));
+                
+                // Save trophies
+                localStorage.setItem('nandomodeKanjiTrophies', JSON.stringify(gameState.trophies));
+                
+                // Save kanji progress
+                localStorage.setItem('nandomodeKanjiProgress', JSON.stringify(gameState.completedKanji));
+            } catch (e) {
+                console.error('Error saving player data:', e);
+            }
+        }
+
+        // Reset to default data
+        function resetPlayerData() {
+            localStorage.removeItem('nandomodeKanjiPlayer');
+            localStorage.removeItem('nandomodeKanjiAchievements');
+            localStorage.removeItem('nandomodeKanjiTrophies');
+            localStorage.removeItem('nandomodeKanjiProgress');
+            
+            // Reload page to reset state
+            window.location.reload();
         }
 
         function updateTrophyDisplay() {
@@ -1082,74 +1130,90 @@
             document.getElementById('platinum-trophy').classList.toggle('unlocked', gameState.trophies.platinum);
         }
 
+        // Enhanced event setup with error handling
         function setupEventListeners() {
-            // Avatar selection
-            document.querySelectorAll('.avatar-option').forEach(option => {
-                option.addEventListener('click', () => {
-                    document.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
-                    option.classList.add('selected');
-                    gameState.player.avatar = option.textContent;
+            try {
+                // Avatar selection
+                document.querySelectorAll('.avatar-option').forEach(option => {
+                    option.addEventListener('click', () => {
+                        document.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
+                        option.classList.add('selected');
+                        gameState.player.avatar = option.textContent;
+                        savePlayerData();
+                    });
+                });
+                
+                // Mode selection
+                document.querySelectorAll('.mode-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        playSound('select');
+                        const mode = e.target.dataset.mode;
+                        startGame(mode);
+                    });
+                });
+                
+                // Game buttons
+                document.getElementById('refresh-btn').addEventListener('click', () => {
+                    playSound('click');
+                    restartRound();
+                });
+                document.getElementById('quit-btn').addEventListener('click', () => {
+                    playSound('click');
+                    quitGame();
+                });
+                
+                // Round end buttons
+                document.getElementById('continue-btn').addEventListener('click', () => {
+                    playSound('select');
+                    continueGame();
+                });
+                document.getElementById('quit-round-btn').addEventListener('click', () => {
+                    playSound('click');
+                    quitGame();
+                });
+                
+                // Leaderboard button
+                document.getElementById('back-to-menu').addEventListener('click', () => {
+                    playSound('click');
+                    showScreen('start');
+                });
+                
+                // Player info changes
+                document.getElementById('nickname').addEventListener('input', (e) => {
+                    gameState.player.name = e.target.value || "プレイヤー";
                     savePlayerData();
                 });
-            });
-            
-            // Mode selection
-            document.querySelectorAll('.mode-button').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    playSound('select');
-                    const mode = e.target.dataset.mode;
-                    startGame(mode);
+                
+                document.getElementById('background').addEventListener('change', (e) => {
+                    gameState.player.background = e.target.value;
+                    savePlayerData();
+                    applyBackground();
                 });
-            });
-            
-            // Game buttons
-            document.getElementById('refresh-btn').addEventListener('click', () => {
-                playSound('click');
-                restartRound();
-            });
-            document.getElementById('quit-btn').addEventListener('click', () => {
-                playSound('click');
-                quitGame();
-            });
-            
-            // Round end buttons
-            document.getElementById('continue-btn').addEventListener('click', () => {
-                playSound('select');
-                continueGame();
-            });
-            document.getElementById('quit-round-btn').addEventListener('click', () => {
-                playSound('click');
-                quitGame();
-            });
-            
-            // Leaderboard button
-            document.getElementById('back-to-menu').addEventListener('click', () => {
-                playSound('click');
-                showScreen('start');
-            });
-            
-            // Player info changes
-            document.getElementById('nickname').addEventListener('change', (e) => {
-                gameState.player.name = e.target.value || "プレイヤー";
-                savePlayerData();
-            });
-            
-            document.getElementById('background').addEventListener('change', (e) => {
-                gameState.player.background = e.target.value;
-                savePlayerData();
-                applyBackground();
-            });
-            
-            // Achievements button
-            document.getElementById('achievements-btn').addEventListener('click', () => {
-                playSound('select');
-                showAchievements();
-            });
-            
-            document.getElementById('close-achievements').addEventListener('click', () => {
-                playSound('click');
-                document.getElementById('achievements').classList.remove('active');
-            });
+                
+                // Achievements button
+                document.getElementById('achievements-btn').addEventListener('click', () => {
+                    playSound('select');
+                    showAchievements();
+                });
+                
+                document.getElementById('close-achievements').addEventListener('click', () => {
+                    playSound('click');
+                    document.getElementById('achievements').classList.remove('active');
+                });
+                
+                // Add reset button for debugging
+                const resetButton = document.createElement('button');
+                resetButton.textContent = 'Reset Data';
+                resetButton.style.position = 'fixed';
+                resetButton.style.bottom = '10px';
+                resetButton.style.right = '10px';
+                resetButton.style.zIndex = '1000';
+                resetButton.addEventListener('click', resetPlayerData);
+                document.body.appendChild(resetButton);
+                
+            } catch (e) {
+                console.error('Error setting up event listeners:', e);
+            }
         }
 
         function applyBackground() {
@@ -1175,54 +1239,59 @@
         function playSound(type) {
             if (!gameState.audioContext) return;
             
-            const oscillator = gameState.audioContext.createOscillator();
-            const gainNode = gameState.audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(gameState.audioContext.destination);
-            
-            // Japanese-inspired sounds
-            switch (type) {
-                case 'select':
-                    oscillator.type = 'sine';
-                    oscillator.frequency.setValueAtTime(440, gameState.audioContext.currentTime);
-                    oscillator.frequency.exponentialRampToValueAtTime(880, gameState.audioContext.currentTime + 0.1);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, gameState.audioContext.currentTime + 0.2);
-                    break;
-                case 'click':
-                    oscillator.type = 'square';
-                    oscillator.frequency.setValueAtTime(220, gameState.audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, gameState.audioContext.currentTime + 0.1);
-                    break;
-                case 'correct':
-                    oscillator.type = 'sine';
-                    oscillator.frequency.setValueAtTime(523.25, gameState.audioContext.currentTime); // C5
-                    gainNode.gain.setValueAtTime(0.3, gameState.audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, gameState.audioContext.currentTime + 0.5);
-                    break;
-                case 'incorrect':
-                    oscillator.type = 'sawtooth';
-                    oscillator.frequency.setValueAtTime(349.23, gameState.audioContext.currentTime); // F4
-                    oscillator.frequency.exponentialRampToValueAtTime(261.63, gameState.audioContext.currentTime + 0.3); // C4
-                    gainNode.gain.setValueAtTime(0.3, gameState.audioContext.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, gameState.audioContext.currentTime + 0.4);
-                    break;
-                case 'win':
-                    // Japanese-inspired victory sound (like a koto)
-                    const now = gameState.audioContext.currentTime;
-                    oscillator.type = 'sine';
-                    oscillator.frequency.setValueAtTime(659.25, now); // E5
-                    oscillator.frequency.setValueAtTime(783.99, now + 0.1); // G5
-                    oscillator.frequency.setValueAtTime(880.00, now + 0.2); // A5
-                    gainNode.gain.setValueAtTime(0.5, now);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-                    break;
+            try {
+                const oscillator = gameState.audioContext.createOscillator();
+                const gainNode = gameState.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(gameState.audioContext.destination);
+                
+                // Japanese-inspired sounds
+                switch (type) {
+                    case 'select':
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(440, gameState.audioContext.currentTime);
+                        oscillator.frequency.exponentialRampToValueAtTime(880, gameState.audioContext.currentTime + 0.1);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, gameState.audioContext.currentTime + 0.2);
+                        break;
+                    case 'click':
+                        oscillator.type = 'square';
+                        oscillator.frequency.setValueAtTime(220, gameState.audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, gameState.audioContext.currentTime + 0.1);
+                        break;
+                    case 'correct':
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(523.25, gameState.audioContext.currentTime); // C5
+                        gainNode.gain.setValueAtTime(0.3, gameState.audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, gameState.audioContext.currentTime + 0.5);
+                        break;
+                    case 'incorrect':
+                        oscillator.type = 'sawtooth';
+                        oscillator.frequency.setValueAtTime(349.23, gameState.audioContext.currentTime); // F4
+                        oscillator.frequency.exponentialRampToValueAtTime(261.63, gameState.audioContext.currentTime + 0.3); // C4
+                        gainNode.gain.setValueAtTime(0.3, gameState.audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, gameState.audioContext.currentTime + 0.4);
+                        break;
+                    case 'win':
+                        // Japanese-inspired victory sound (like a koto)
+                        const now = gameState.audioContext.currentTime;
+                        oscillator.type = 'sine';
+                        oscillator.frequency.setValueAtTime(659.25, now); // E5
+                        oscillator.frequency.setValueAtTime(783.99, now + 0.1); // G5
+                        oscillator.frequency.setValueAtTime(880.00, now + 0.2); // A5
+                        gainNode.gain.setValueAtTime(0.5, now);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                        break;
+                }
+                
+                oscillator.start();
+                oscillator.stop(gameState.audioContext.currentTime + 0.5);
+            } catch (e) {
+                console.error('Error playing sound:', e);
             }
-            
-            oscillator.start();
-            oscillator.stop(gameState.audioContext.currentTime + 0.5);
         }
 
+        // Enhanced game start with better kanji selection
         function startGame(mode) {
             // Set game mode
             gameState.mode = mode;
@@ -1234,13 +1303,9 @@
             gameState.score = 0;
             gameState.streak = 0;
             gameState.sessionCompleted = 0;
-            gameState.completedKanji = {};
             gameState.player.name = document.getElementById('nickname').value || "プレイヤー";
             
-            // Save player data
-            savePlayerData();
-            
-            // Initialize kanji pool
+            // Initialize kanji pool with better distribution
             initKanjiPool();
             
             // Start first round
@@ -1251,6 +1316,9 @@
             
             // Update UI
             updateGameUI();
+            
+            // Save player data
+            savePlayerData();
         }
 
         function applyThemeColor(mode) {
@@ -1261,8 +1329,9 @@
             document.body.classList.add(`${mode}-theme`);
         }
 
+        // Improved kanji selection algorithm
         function initKanjiPool() {
-            // Create a pool of 100 kanji for this session
+            // Create a pool of kanji for this session
             gameState.gameKanji = [];
             
             // Make sure window.vocab exists and has items
@@ -1274,26 +1343,52 @@
             // Create a copy of the vocab array to avoid modifying the original
             const vocabCopy = [...window.vocab];
             
-            // Fill the game kanji pool with unique kanji
-            while (gameState.gameKanji.length < 100 && vocabCopy.length > 0) {
+            // Sort by grade level (lower grades first)
+            vocabCopy.sort((a, b) => a.grade - b.grade);
+            
+            // Select kanji based on game mode
+            let kanjiPoolSize = 100;
+            let startIndex = 0;
+            
+            // Adjust selection based on difficulty
+            switch(gameState.mode) {
+                case 'easy':
+                    // First 100 basic kanji
+                    startIndex = 0;
+                    break;
+                case 'medium':
+                    // Middle range kanji
+                    startIndex = Math.floor(vocabCopy.length * 0.3);
+                    break;
+                case 'hard':
+                    // More advanced kanji
+                    startIndex = Math.floor(vocabCopy.length * 0.6);
+                    break;
+            }
+            
+            // Ensure we don't go out of bounds
+            startIndex = Math.min(startIndex, vocabCopy.length - kanjiPoolSize);
+            
+            // Get the slice of kanji for this session
+            gameState.gameKanji = vocabCopy.slice(startIndex, startIndex + kanjiPoolSize);
+            
+            // If we didn't get enough, fill with random from the rest
+            while (gameState.gameKanji.length < kanjiPoolSize && vocabCopy.length > 0) {
                 const randomIndex = Math.floor(Math.random() * vocabCopy.length);
                 const kanjiItem = vocabCopy[randomIndex];
                 
-                // Make sure the item exists and has the required properties
                 if (kanjiItem && kanjiItem.kanji) {
-                    // Check if this kanji is already in our pool
                     if (!gameState.gameKanji.some(item => item.kanji === kanjiItem.kanji)) {
                         gameState.gameKanji.push(kanjiItem);
                     }
-                    // Remove this item from the copy to avoid duplicates
                     vocabCopy.splice(randomIndex, 1);
                 } else {
-                    // Remove invalid items
                     vocabCopy.splice(randomIndex, 1);
                 }
             }
         }
 
+        // Enhanced round setup with better learning progression
         function startNewRound() {
             // Reset round state
             gameState.round = {
@@ -1312,47 +1407,8 @@
             // Clear peripheral info
             document.getElementById('peripheral-info').innerHTML = '';
             
-            // Select 5 kanji: 3 new, 2 repeat
-            const roundKanji = [];
-            const availableKanji = [...gameState.gameKanji];
-            
-            // Add 3 new kanji (not completed)
-            let newCount = 0;
-            while (newCount < 3 && availableKanji.length > 0) {
-                const randomIndex = Math.floor(Math.random() * availableKanji.length);
-                const kanji = availableKanji[randomIndex];
-                
-                if (!gameState.completedKanji[kanji.kanji] || gameState.completedKanji[kanji.kanji] < 3) {
-                    roundKanji.push(kanji);
-                    availableKanji.splice(randomIndex, 1);
-                    newCount++;
-                }
-            }
-            
-            // Add 2 repeat kanji (in progress)
-            let repeatCount = 0;
-            const inProgressKanji = Object.keys(gameState.completedKanji).filter(
-                k => gameState.completedKanji[k] > 0 && gameState.completedKanji[k] < 3
-            );
-            
-            while (repeatCount < 2 && inProgressKanji.length > 0) {
-                const randomIndex = Math.floor(Math.random() * inProgressKanji.length);
-                const kanjiChar = inProgressKanji[randomIndex];
-                const kanjiObj = gameState.gameKanji.find(v => v.kanji === kanjiChar);
-                
-                if (kanjiObj) {
-                    roundKanji.push(kanjiObj);
-                    inProgressKanji.splice(randomIndex, 1);
-                    repeatCount++;
-                }
-            }
-            
-            // If we still need more, add random
-            while (roundKanji.length < 5 && availableKanji.length > 0) {
-                const randomIndex = Math.floor(Math.random() * availableKanji.length);
-                roundKanji.push(availableKanji[randomIndex]);
-                availableKanji.splice(randomIndex, 1);
-            }
+            // Select kanji for this round with better learning progression
+            const roundKanji = selectRoundKanji();
             
             // Create cards for left and right columns based on mode
             roundKanji.forEach((item, index) => {
@@ -1418,6 +1474,70 @@
             
             // Update feedback
             document.getElementById('feedback-text').textContent = "漢字と読み方をマッチさせましょう!";
+        }
+
+        // Improved kanji selection for each round
+        function selectRoundKanji() {
+            const roundKanji = [];
+            const availableKanji = [...gameState.gameKanji];
+            
+            // Get mastered kanji (completed 3+ times)
+            const masteredKanji = Object.entries(gameState.completedKanji)
+                .filter(([_, count]) => count >= 3)
+                .map(([kanji]) => kanji);
+                
+            // Get in-progress kanji (completed 1-2 times)
+            const inProgressKanji = Object.entries(gameState.completedKanji)
+                .filter(([_, count]) => count > 0 && count < 3)
+                .map(([kanji]) => kanji);
+                
+            // Get new kanji (never seen before)
+            const newKanji = availableKanji.filter(item => 
+                !gameState.completedKanji[item.kanji] && 
+                !masteredKanji.includes(item.kanji) &&
+                !inProgressKanji.includes(item.kanji)
+            );
+            
+            // Select 2 new kanji (if available)
+            let newSelected = 0;
+            while (newSelected < 2 && newKanji.length > 0) {
+                const randomIndex = Math.floor(Math.random() * newKanji.length);
+                roundKanji.push(newKanji[randomIndex]);
+                newKanji.splice(randomIndex, 1);
+                newSelected++;
+            }
+            
+            // Select 2 in-progress kanji (if available)
+            let inProgressSelected = 0;
+            while (inProgressSelected < 2 && inProgressKanji.length > 0) {
+                const kanjiChar = inProgressKanji[Math.floor(Math.random() * inProgressKanji.length)];
+                const kanjiObj = gameState.gameKanji.find(v => v.kanji === kanjiChar);
+                
+                if (kanjiObj) {
+                    roundKanji.push(kanjiObj);
+                    inProgressSelected++;
+                }
+            }
+            
+            // Select 1 mastered kanji for review (if available)
+            if (masteredKanji.length > 0) {
+                const kanjiChar = masteredKanji[Math.floor(Math.random() * masteredKanji.length)];
+                const kanjiObj = gameState.gameKanji.find(v => v.kanji === kanjiChar);
+                if (kanjiObj) roundKanji.push(kanjiObj);
+            }
+            
+            // If we still don't have enough, fill with random new kanji
+            while (roundKanji.length < 5 && availableKanji.length > 0) {
+                const randomIndex = Math.floor(Math.random() * availableKanji.length);
+                const kanjiItem = availableKanji[randomIndex];
+                
+                if (!roundKanji.some(item => item.kanji === kanjiItem.kanji)) {
+                    roundKanji.push(kanjiItem);
+                }
+                availableKanji.splice(randomIndex, 1);
+            }
+            
+            return roundKanji;
         }
 
         function renderCards() {
@@ -1545,15 +1665,22 @@
 
         function speak(text, lang) {
             if ('speechSynthesis' in window) {
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = lang;
-                speechSynthesis.speak(utterance);
+                try {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = lang;
+                    speechSynthesis.speak(utterance);
+                } catch (e) {
+                    console.error('Error with speech synthesis:', e);
+                    // Fallback to sound effect
+                    playSound('click');
+                }
             } else {
                 // Fallback to sound effect
                 playSound('click');
             }
         }
 
+        // Enhanced match processing with better feedback
         function processMatch(isCorrect, leftCard, rightCard) {
             // Get DOM elements
             const leftElement = document.getElementById(leftCard.id);
@@ -1570,15 +1697,20 @@
                 leftElement.style.pointerEvents = 'none';
                 rightElement.style.pointerEvents = 'none';
                 
-                // Update score and streak
-                gameState.score += 1;
+                // Update score and streak with bonus for streak
+                const streakBonus = Math.min(3, Math.floor(gameState.streak / 3));
+                gameState.score += 1 + streakBonus;
                 gameState.streak += 1;
                 
                 // Play sound
                 playSound('correct');
                 
-                // Update feedback
-                document.getElementById('feedback-text').textContent = "正解! +1 ポイント";
+                // Update feedback with streak bonus info if applicable
+                let feedback = "正解! +1 ポイント";
+                if (streakBonus > 0) {
+                    feedback += ` (+${streakBonus} 連続ボーナス!)`;
+                }
+                document.getElementById('feedback-text').textContent = feedback;
                 
                 // Update kanji progress
                 updateKanjiProgress(leftCard.kanji);
@@ -1587,30 +1719,35 @@
                 if (gameState.score === 1 && !gameState.achievements.firstBlood.unlocked) {
                     gameState.achievements.firstBlood.unlocked = true;
                     showAchievementUnlocked('初勝利', '最初の正解を獲得しました!', '🩸');
+                    savePlayerData();
                 }
                 
                 // Check streak achievements
                 if (gameState.streak === 5 && !gameState.achievements.streak5.unlocked) {
                     gameState.achievements.streak5.unlocked = true;
                     showAchievementUnlocked('連続正解5回', '5回連続で正解しました!', '🔥');
+                    savePlayerData();
                 }
                 
                 if (gameState.streak === 10 && !gameState.achievements.streak10.unlocked) {
                     gameState.achievements.streak10.unlocked = true;
                     showAchievementUnlocked('連続正解10回', '10回連続で正解しました!', '🔥');
+                    savePlayerData();
                 }
                 
                 // Check if round is complete
                 gameState.round.matchedPairs++;
                 if (gameState.round.matchedPairs === 5) {
                     // Bonus for perfect round
-                    gameState.score += 5;
-                    document.getElementById('feedback-text').textContent = "パーフェクト! +5 ボーナスポイント";
+                    const perfectBonus = 5;
+                    gameState.score += perfectBonus;
+                    document.getElementById('feedback-text').textContent = `パーフェクト! +${perfectBonus} ボーナスポイント`;
                     
                     // Check for perfect round achievement
                     if (!gameState.achievements.perfectRound.unlocked) {
                         gameState.achievements.perfectRound.unlocked = true;
                         showAchievementUnlocked('完璧なラウンド', 'すべて正解しました!', '✨');
+                        savePlayerData();
                     }
                     
                     setTimeout(endRound, 1000);
@@ -1625,7 +1762,7 @@
                 // Show correct info for a few seconds
                 const correctKanjiInfo = gameState.gameKanji.find(k => k.kanji === leftCard.kanji);
                 if (correctKanjiInfo) {
-                    const tempCard = { // Create a temporary card object to pass to showPeripheralInfo
+                    const tempCard = {
                         id: `temp-${correctKanjiInfo.kanji}`,
                         content: { type: 'kanji', kanji: correctKanjiInfo.kanji, reading: correctKanjiInfo.reading },
                         kanji: correctKanjiInfo.kanji,
@@ -1637,7 +1774,7 @@
                     setTimeout(() => {
                         document.getElementById('peripheral-info').innerHTML = '';
                         document.getElementById('peripheral-info').classList.remove('active');
-                    }, 3000); // Display for 3 seconds
+                    }, 3000);
                 }
 
                 // Reset after delay
@@ -1652,10 +1789,10 @@
                 // Play sound
                 playSound('incorrect');
                 
-                // Update feedback
-                document.getElementById('feedback-text').textContent = "不正解! -1 ポイント";
+                // Update feedback with learning tip
+                document.getElementById('feedback-text').textContent = "不正解! もう一度試してみましょう";
                 
-                // Update score
+                // Small penalty, but don't go below zero
                 gameState.score = Math.max(0, gameState.score - 1);
             }
             
@@ -1663,14 +1800,15 @@
             gameState.round.selectedLeft = null;
             gameState.round.selectedRight = null;
             
-            // Clear peripheral info only if correct match, otherwise it will be cleared by the 3s timeout
+            // Clear peripheral info only if correct match
             if (isCorrect) {
                 document.getElementById('peripheral-info').innerHTML = '';
                 document.getElementById('peripheral-info').classList.remove('active');
             }
             
-            // Update UI
+            // Update UI and save progress
             updateGameUI();
+            savePlayerData();
         }
 
         function updateKanjiProgress(kanji) {
@@ -1685,27 +1823,31 @@
             // Check if completed (3 times)
             if (gameState.completedKanji[kanji] >= 3) {
                 gameState.sessionCompleted++;
+                gameState.player.kanjiMastered++;
                 
                 // Check completion achievements
-                if (gameState.sessionCompleted === 10 && !gameState.achievements.kanjiNovice.unlocked) {
+                if (gameState.player.kanjiMastered === 10 && !gameState.achievements.kanjiNovice.unlocked) {
                     gameState.achievements.kanjiNovice.unlocked = true;
                     showAchievementUnlocked('漢字初心者', '10個の漢字をマスターしました!', '🎓');
+                    savePlayerData();
                 }
                 
-                if (gameState.sessionCompleted === 25 && !gameState.achievements.kanjiScholar.unlocked) {
+                if (gameState.player.kanjiMastered === 25 && !gameState.achievements.kanjiScholar.unlocked) {
                     gameState.achievements.kanjiScholar.unlocked = true;
                     showAchievementUnlocked('漢字学者', '25個の漢字をマスターしました!', '🎓');
+                    savePlayerData();
                 }
                 
-                if (gameState.sessionCompleted === 50 && !gameState.achievements.kanjiMaster.unlocked) {
+                if (gameState.player.kanjiMastered === 50 && !gameState.achievements.kanjiMaster.unlocked) {
                     gameState.achievements.kanjiMaster.unlocked = true;
                     showAchievementUnlocked('漢字マスター', '50個の漢字をマスターしました!', '🎓');
                     awardTrophy('gold');
+                    savePlayerData();
                 }
             }
             
             // Update progress bar
-            const progressPercent = (gameState.sessionCompleted / 50) * 100;
+            const progressPercent = (gameState.player.kanjiMastered / 50) * 100;
             document.getElementById('progress-bar').style.width = `${progressPercent}%`;
         }
 
@@ -1718,6 +1860,9 @@
             
             // Update round end screen
             document.getElementById('round-score').textContent = gameState.score;
+            
+            // Update player's total score
+            gameState.player.totalScore += gameState.score;
             
             // Populate correct answers
             const answersList = document.getElementById('correct-answers-list');
@@ -1737,6 +1882,9 @@
             
             // Show round end screen
             showScreen('roundEnd');
+            
+            // Save player progress
+            savePlayerData();
         }
 
         function createConfetti() {
@@ -1759,7 +1907,7 @@
         }
 
         function continueGame() {
-            if (gameState.sessionCompleted >= 50) {
+            if (gameState.player.kanjiMastered >= 50) {
                 // Game completed - check achievements
                 checkAchievements();
                 showLeaderboard();
@@ -1822,13 +1970,14 @@
             }
             
             showAchievementUnlocked(trophyName, `${trophyName}を獲得しました!`, trophyIcon);
+            savePlayerData();
         }
 
         function showAchievementUnlocked(title, description, icon) {
             playSound('win');
             
             const notification = document.createElement('div');
-            notification.className = 'feedback-box achievement-notification'; /* Added new class for distinct styling */
+            notification.className = 'feedback-box achievement-notification';
             notification.innerHTML = `
                 <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
                     <div style="font-size: 2.5rem;">${icon}</div>
@@ -1839,7 +1988,7 @@
                 </div>
             `;
             
-            document.body.appendChild(notification); /* Append to body for fixed positioning */
+            document.body.appendChild(notification);
             
             setTimeout(() => {
                 notification.remove();
@@ -1950,11 +2099,15 @@
                 avatar: gameState.player.avatar,
                 score: gameState.score,
                 mode: gameState.mode,
-                date: new Date().toISOString()
+                date: new Date().toISOString(),
+                kanjiMastered: gameState.player.kanjiMastered
             });
             
-            // Sort by score descending
-            leaderboard.sort((a, b) => b.score - a.score);
+            // Sort by score descending, then by kanji mastered
+            leaderboard.sort((a, b) => {
+                if (b.score !== a.score) return b.score - a.score;
+                return b.kanjiMastered - a.kanjiMastered;
+            });
             
             // Keep top 10
             leaderboard = leaderboard.slice(0, 10);
@@ -1974,7 +2127,7 @@
                         <span class="leaderboard-avatar">${entry.avatar}</span>
                         <span>${entry.name}</span>
                     </div>
-                    <div>${entry.score} (${getModeName(entry.mode)})</div>
+                    <div>${entry.score} (${getModeName(entry.mode)}, ${entry.kanjiMastered}漢字)</div>
                 `;
                 leaderboardContent.appendChild(entryEl);
             });
@@ -1994,7 +2147,7 @@
         function updateGameUI() {
             document.getElementById('score').textContent = gameState.score;
             document.getElementById('streak').textContent = gameState.streak;
-            document.getElementById('progress').textContent = gameState.sessionCompleted;
+            document.getElementById('progress').textContent = `${gameState.player.kanjiMastered}/50`;
         }
 
         function showScreen(screenName) {
@@ -2004,7 +2157,9 @@
             });
             
             // Show requested screen
-            screens[screenName].classList.add('active');
+            if (screens[screenName]) {
+                screens[screenName].classList.add('active');
+            }
         }
 
         // Utility functions
@@ -2014,6 +2169,19 @@
                 [array[i], array[j]] = [array[j], array[i]];
             }
             return array;
+        }
+
+        // Register the Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker registered! Scope:', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('Service Worker registration failed:', err);
+                    });
+            });
         }
     </script>
 </body>
