@@ -1337,18 +1337,18 @@ const gameState = {
                 gold: false,
                 platinum: false
             },
-            storeItems: [
-                { id: 'sushi', name: '寿司', nameEn: 'Sushi', icon: '🍣', price: 10 },
-                { id: 'ramen', name: 'ラーメン', nameEn: 'Ramen', icon: '🍜', price: 20 },
-                { id: 'bento', name: '弁当', nameEn: 'Bento Box', icon: '🍱', price: 30 },
-                { id: 'dango', name: '団子', nameEn: 'Dango', icon: '🍡', price: 50 },
-                { id: 'shinkansen', name: '新幹線', nameEn: 'Bullet Train', icon: '🚄', price: 100 },
-                { id: 'torii', name: '鳥居', nameEn: 'Torii Gate', icon: '⛩️', price: 200 },
-                { id: 'kimono', name: '着物', nameEn: 'Kimono', icon: '👘', price: 500 },
-                { id: 'samurai', name: '侍', nameEn: 'Samurai', icon: '🗡️', price: 1000 },
-                { id: 'fuji', name: '富士山', nameEn: 'Mount Fuji', icon: '🗻', price: 5000 },
-                { id: 'golden-pavilion', name: '金閣寺', nameEn: 'Golden Pavilion', icon: '🏯', price: 10000 }
-            ]
+storeItems: [
+    { id: 'sushi', name: '寿司', nameEn: 'Sushi', icon: '🍣', price: 10 },
+    { id: 'ramen', name: 'ラーメン', nameEn: 'Ramen', icon: '🍜', price: 20 },
+    { id: 'bento', name: '弁当', nameEn: 'Bento Box', icon: '🍱', price: 30 },
+    { id: 'dango', name: '団子', nameEn: 'Dango', icon: '🍡', price: 50 },
+    { id: 'shinkansen', name: '新幹線', nameEn: 'Bullet Train', icon: '🚄', price: 100, requires: 'bronze' },
+    { id: 'torii', name: '鳥居', nameEn: 'Torii Gate', icon: '⛩️', price: 200, requires: 'silver' },
+    { id: 'kimono', name: '着物', nameEn: 'Kimono', icon: '👘', price: 500, requires: 'gold' },
+    { id: 'samurai', name: '侍', nameEn: 'Samurai', icon: '🗡️', price: 1000, requires: 'platinum' },
+    { id: 'fuji', name: '富士山', nameEn: 'Mount Fuji', icon: '🗻', price: 5000, requires: 'platinum' },
+    { id: 'golden-pavilion', name: '金閣寺', nameEn: 'Golden Pavilion', icon: '🏯', price: 10000, requires: 'platinum' }
+]
         };
 
         // DOM elements
@@ -2467,18 +2467,45 @@ function getCompletionBadges(mode, grade) {
             document.getElementById('progress-bar').style.width = `${progressPercent}%`;
         }
 
-// MODIFIED: Enhanced grade completion tracking with rewards
 function checkGradeCompletion() {
     const allMastered = gameState.gameKanji.every(item => {
         return gameState.completedKanji[item.kanji] >= 3;
     });
     
     if (allMastered) {
-        // Track completion
         const mode = gameState.mode;
         const grade = gameState.currentGrade;
+        
+        // Track completion
         gameState.gradeCompletions[mode][grade-1]++;
         
+        // Automatically unlock lower difficulties if completing in harder mode
+        if (mode === 'hard') {
+            if (!gameState.unlockedGrades['medium'].includes(grade)) {
+                gameState.unlockedGrades['medium'].push(grade);
+            }
+            if (!gameState.unlockedGrades['easy'].includes(grade)) {
+                gameState.unlockedGrades['easy'].push(grade);
+            }
+            
+            // Award medals for lower difficulties automatically
+            if (gameState.gradeCompletions['medium'][grade-1] === 0) {
+                gameState.gradeCompletions['medium'][grade-1] = 1;
+            }
+            if (gameState.gradeCompletions['easy'][grade-1] === 0) {
+                gameState.gradeCompletions['easy'][grade-1] = 1;
+            }
+        }
+        else if (mode === 'medium') {
+            if (!gameState.unlockedGrades['easy'].includes(grade)) {
+                gameState.unlockedGrades['easy'].push(grade);
+            }
+            
+            if (gameState.gradeCompletions['easy'][grade-1] === 0) {
+                gameState.gradeCompletions['easy'][grade-1] = 1;
+            }
+        }
+
         // Award points based on difficulty
         const points = { easy: 50, medium: 100, hard: 200 };
         gameState.points += points[mode];
@@ -2601,41 +2628,44 @@ function checkGradeCompletion() {
             }
         }
 
-        function awardTrophy(type) {
-            gameState.trophies[type] = true;
-            updateTrophyDisplay();
-            
-            // Show trophy notification
-            let trophyIcon = '';
-            let trophyName = '';
-            let trophyNameEn = '';
-            
-            switch(type) {
-                case 'bronze':
-                    trophyIcon = '🥉';
-                    trophyName = 'ブロンズトロフィー';
-                    trophyNameEn = 'Bronze Trophy';
-                    break;
-                case 'silver':
-                    trophyIcon = '🥈';
-                    trophyName = 'シルバートロフィー';
-                    trophyNameEn = 'Silver Trophy';
-                    break;
-                case 'gold':
-                    trophyIcon = '🥇';
-                    trophyName = 'ゴールドトロフィー';
-                    trophyNameEn = 'Gold Trophy';
-                    break;
-                case 'platinum':
-                    trophyIcon = '🏆';
-                    trophyName = 'プラチナトロフィー';
-                    trophyNameEn = 'Platinum Trophy';
-                    break;
-            }
-            
-            showAchievementUnlocked(`${trophyName} / ${trophyNameEn}`, `${trophyName}を獲得しました! / Earned ${trophyNameEn}!`, trophyIcon);
-            savePlayerData();
-        }
+function awardTrophy(type) {
+    gameState.trophies[type] = true;
+    updateTrophyDisplay();
+    
+    // Refresh store to show newly unlocked items
+    renderStoreItems();
+    
+    // Show trophy notification
+    let trophyIcon = '';
+    let trophyName = '';
+    let trophyNameEn = '';
+    
+    switch(type) {
+        case 'bronze':
+            trophyIcon = '🥉';
+            trophyName = 'ブロンズトロフィー';
+            trophyNameEn = 'Bronze Trophy';
+            break;
+        case 'silver':
+            trophyIcon = '🥈';
+            trophyName = 'シルバートロフィー';
+            trophyNameEn = 'Silver Trophy';
+            break;
+        case 'gold':
+            trophyIcon = '🥇';
+            trophyName = 'ゴールドトロフィー';
+            trophyNameEn = 'Gold Trophy';
+            break;
+        case 'platinum':
+            trophyIcon = '🏆';
+            trophyName = 'プラチナトロフィー';
+            trophyNameEn = 'Platinum Trophy';
+            break;
+    }
+    
+    showAchievementUnlocked(`${trophyName} / ${trophyNameEn}`, `${trophyName}を獲得しました! / Earned ${trophyNameEn}!`, trophyIcon);
+    savePlayerData();
+}
 
         function showAchievementUnlocked(title, description, icon) {
             playSound('win');
@@ -2809,37 +2839,51 @@ function checkGradeCompletion() {
             showScreen('progress');
         }
 
-        function renderStoreItems() {
-            const storeContainer = document.getElementById('store-items');
-            storeContainer.innerHTML = '';
-            
-            gameState.storeItems.forEach(item => {
-                const isOwned = gameState.player.ownedItems.includes(item.id);
-                const canAfford = gameState.points >= item.price;
-                
-                const itemElement = document.createElement('div');
-                itemElement.className = `store-item ${isOwned ? 'owned' : ''} ${!isOwned && !canAfford ? 'unaffordable' : ''}`;
-                itemElement.innerHTML = `
-                    <div class="store-item-icon">${item.icon}</div>
-                    <div class="store-item-name">${item.name}<br>${item.nameEn}</div>
-                    <div class="store-item-price">${item.price} ポイント</div>
-                    ${isOwned ? '<div class="store-item-owned">所有済み / Owned</div>' : ''}
-                `;
-                
-                if (!isOwned) {
-                    itemElement.addEventListener('click', () => {
-                        if (canAfford) {
-                            purchaseItem(item);
-                        } else {
-                            document.getElementById('feedback-text').textContent = 
-                                `ポイントが足りません! / Not enough points!`;
-                        }
-                    });
+function renderStoreItems() {
+    const storeContainer = document.getElementById('store-items');
+    storeContainer.innerHTML = '';
+    
+    gameState.storeItems.forEach(item => {
+        const isOwned = gameState.player.ownedItems.includes(item.id);
+        const canAfford = gameState.points >= item.price;
+        const hasRequirement = !item.requires || gameState.trophies[item.requires];
+        
+        const itemElement = document.createElement('div');
+        itemElement.className = `store-item ${isOwned ? 'owned' : ''} ${!isOwned && (!canAfford || !hasRequirement) ? 'unaffordable' : ''}`;
+        itemElement.innerHTML = `
+            <div class="store-item-icon">${item.icon}</div>
+            <div class="store-item-name">${item.name}<br>${item.nameEn}</div>
+            <div class="store-item-price">${item.price} ポイント</div>
+            ${item.requires && !gameState.trophies[item.requires] ? 
+                `<div class="store-item-owned">${getTrophyName(item.requires)}が必要 / Requires ${getTrophyName(item.requires, true)}</div>` : 
+                isOwned ? '<div class="store-item-owned">所有済み / Owned</div>' : ''}
+        `;
+        
+        if (!isOwned && hasRequirement) {
+            itemElement.addEventListener('click', () => {
+                if (canAfford) {
+                    purchaseItem(item);
+                } else {
+                    document.getElementById('feedback-text').textContent = 
+                        `ポイントが足りません! / Not enough points!`;
                 }
-                
-                storeContainer.appendChild(itemElement);
             });
         }
+        
+        storeContainer.appendChild(itemElement);
+    });
+}
+
+// Add this helper function
+function getTrophyName(trophy, english = false) {
+    const names = {
+        bronze: { jp: 'ブロンズトロフィー', en: 'Bronze Trophy' },
+        silver: { jp: 'シルバートロフィー', en: 'Silver Trophy' },
+        gold: { jp: 'ゴールドトロフィー', en: 'Gold Trophy' },
+        platinum: { jp: 'プラチナトロフィー', en: 'Platinum Trophy' }
+    };
+    return english ? names[trophy].en : names[trophy].jp;
+}
 
         function purchaseItem(item) {
             if (gameState.points >= item.price && !gameState.player.ownedItems.includes(item.id)) {
